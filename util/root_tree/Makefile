@@ -24,21 +24,27 @@ ifeq ($(MYOS),Linux)
   F77 := gfortran
 endif
 
-ROOTSYS=/cvmfs/oasis.opensciencegrid.org/jlab/scicomp/sw/el9/root/6.30.04-gcc11.4.0
+# change root dir to 'root-config' for running locally
+# ROOTSYS=/cvmfs/oasis.opensciencegrid.org/jlab/scicomp/sw/el9/root/6.30.04-gcc11.4.0
+ROOTCONFIG = root-config
 CXX=g++
 CXXFLAGS0 = -O3 -std=c++17
 CXXFLAGS=$(CXXFLAGS0) $(DROOT)
-ROOTDIR=$(ROOTSYS)
+# ROOTDIR=$(ROOTSYS)
 DMYROOT= -DMYROOT
-ROOTLIBS     := $(shell $(ROOTDIR)/bin/root-config --prefix=$(ROOTDIR)  --libs)
-ROOTINCLUDE  := -I $(shell $(ROOTDIR)/bin/root-config --prefix=$(ROOTDIR) --incdir)
+# ROOTLIBS     := $(shell $(ROOTDIR)/bin/root-config --prefix=$(ROOTDIR)  --libs)
+ROOTLIBS     := $(shell $(ROOTCONFIG) --libs)
+# ROOTINCLUDE  := -I $(shell $(ROOTDIR)/bin/root-config --prefix=$(ROOTDIR) --incdir)
+ROOTINCLUDE := -I $(shell $(ROOTCONFIG)  --incdir)
 
 none: make_root_tree
 
 all: make_root_tree
 
 make_root_tree: $(my_objs) froot.co
-	$(F77) $(LDFLAGS) -o make_root_tree $(my_objs) $(OTHERLIBS) froot.co $(ROOTLIBS) -lImt -lvdt -ltbb $(OTHERLIBS) $(CERNLIBS) -L/usr/lib64 -lstdc++
+# 	$(F77) $(LDFLAGS) -o make_root_tree $(my_objs) $(OTHERLIBS) froot.co $(ROOTLIBS) -lImt -lvdt -ltbb $(OTHERLIBS) $(CERNLIBS) -L/usr/lib64 -lstdc++
+	$(F77) $(LDFLAGS) -o make_root_tree $(my_objs) $(OTHERLIBS) froot.co $(ROOTLIBS) -lImt -lvdt $(OTHERLIBS) $(CERNLIBS) -lstdc++
+  # removed -ltbb and -L/usr/lib64 for local linking
 
 %.o: %.f
 	$(FC) -c $(FFLAGS) $<
