@@ -1,9 +1,14 @@
 #!/usr/bin/tcsh 
 cd src
+pwd
+make clean
+make
 ./mc_single_arm << endofinput >! ../runout/$1.out
 $1
 endofinput
 cd ../util/root_tree
+make clean
+make
 ./make_root_tree << endofinput
 $1
 endofinput
