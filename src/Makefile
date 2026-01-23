@@ -18,7 +18,7 @@ my_objs = hms_hbook_init.o shms_hbook_init.o \
 	  $(SHARE)rotate_vaxis.o $(SHARE)locforunt.o $(SHARE)musc.o \
           $(SHARE)musc_ext.o $(SHARE)stringlib.o mt19937.o gauss1.o \
 	  $(CH)lfit.o $(CH)ranlux.o $(CH)fint.o $(CH)kerset.o $(CH)abend.o \
-          loren.o
+          loren.o F1F2IN21_v1.0.o
 
 MYOS := $(subst -,,$(shell uname))
 #mess $(MYOS)

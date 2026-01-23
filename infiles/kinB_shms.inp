@@ -1,0 +1,42 @@
+!------------------------------------------------------------------------------
+! Input file for MC_SINGLE_ARM
+!------------------------------------------------------------------------------
+   2000000      Monte-Carlo trials
+      2         Spectrometer (1=HMS, 2=SHMS, 3=..)
+     2900.      Spectrometer momentum (in MeV/c)
+     30.0       Spectrometer angle (in degrees)
+    -50.0       M.C. DP/P  down limit
+     50.0       M.C. DP/P  up   limit
+    -50.0       M.C. Theta ( dy/dz) down limit (mr)
+     50.0       M.C. Theta down limit (mr)
+    -50.0       M.C. Phi (dx/dz)  down limit (mr)
+     50.0       M.C. Phi   down limit (mr)
+     0.0089     Horiz beam spot size in cm (Full width of +/- 3 sigma)
+     0.0042     Vert  beam spot size in cm (Full width of +/- 3 sigma)
+     40.0       Length of target (Full width, cm)
+     0.4        Raster full-width x (cm)
+     0.4        Raster full-width y (cm)
+     100.0      DP/P  reconstruction cut (half width in % )
+     100.0      Theta reconstruction cut (half width in mr)
+     100.0      Phi   reconstruction cut (half width in mr)
+     100.0      ZTGT  reconstruction cut (Half width in cm)
+     54143.0    one radiation length of target material (in cm), dutch
+     0.0        Beam x offset (cm)  +x = beam left
+     0.0        Beam y offset (cm)  +y = up
+     0.0        Target z offset (cm)+z = downstream
+     0.0        Spectrometer x offset (cm) +x = down
+     0.0        Spectrometer y offset (cm)
+     0.0        Spectrometer z offset (cm)
+     0.0        Spectrometer xp offset (mr)
+     0.0        Spectrometer yp offset (mr)
+     0          particle identification :e=0, p=1, d=2, pi=3, ka=4
+     1          flag for multiple scattering
+     1          flag for wire chamber smearing
+     1          flag for storing all events (including failed events with stop_id > 0)
+     0          flag for beam energy, if >0 then calculate for C elastic
+     0          flag to use sieve
+     3          target atomic number (Z+N), must be coupled with the above beam_energy
+     10.38          beam energy for F1F2IN21 (GeV)  <--- ebeam_model     
+     2          target charge Z (for F1F2IN21)          
+     0          Multiple scattering type (1= Highland, 0=Highland w tail)
+     1          Enegy Loss (1=On)
