@@ -3,6 +3,7 @@ cd src
 pwd
 make clean
 make
+echo "run mc_single_arm"
 ./mc_single_arm << endofinput >! ../runout/$1.out
 $1
 endofinput
