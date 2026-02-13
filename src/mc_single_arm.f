@@ -15,10 +15,10 @@ C-______________________________________________________________________________
 	include 'hbook.inc'
 
 c Vector (real*4) for hut ntuples - needs to match dimension of variables
-	real*8		shms_hut(23)
+	real*8		shms_hut(24)
 	real*8          shms_spec(59)
 
-	real*8          hms_hut(23)
+	real*8          hms_hut(24)
 c
 	real*8 xs_num,ys_num,xc_sieve,yc_sieve
 	real*8 xsfr_num,ysfr_num,xc_frsieve,yc_frsieve
@@ -70,6 +70,7 @@ C Event limits, topdrawer limits, physics quantities
 	integer*4 armSTOP_successes,armSTOP_trials
         real *8 beam_energy, el_energy, theta_sc!elastic calibration
         real *8 tar_mass, tar_atom_num          !elastic calibration
+		real *8 Eprime	! final energy
 C Initial and reconstructed track quantities.
 	real*8 dpp_init,dth_init,dph_init,xtar_init,ytar_init,ztar_init
 	real*8 dpp_recon,dth_recon,dph_recon,ztar_recon,ytar_recon
@@ -125,13 +126,13 @@ C using SIMC unstructured version
 C
 C SHMS
 	shmsSTOP_trials	= 0
-        shmsSTOP_targ_hor	= 0
-        shmsSTOP_targ_vert	= 0
-        shmsSTOP_targ_oct	= 0
-        shmsSTOP_FRONTSLIT_hor	= 0
-        shmsSTOP_FRONTSLIT_vert	= 0
+	shmsSTOP_targ_hor	= 0
+	shmsSTOP_targ_vert	= 0
+	shmsSTOP_targ_oct	= 0
+	shmsSTOP_FRONTSLIT_hor	= 0
+	shmsSTOP_FRONTSLIT_vert	= 0
 	shmsSTOP_HB_in	= 0
-        shmsSTOP_HB_men = 0
+	shmsSTOP_HB_men = 0
 	shmsSTOP_HB_mex	= 0
 	shmsSTOP_HB_out	= 0	
 	shmsSTOP_DOWNSLIT	= 0
@@ -160,7 +161,7 @@ c	shmsSTOP_Q3_out4	= 0
 c	shmsSTOP_Q3_out5	= 0
 c	shmsSTOP_Q3_out6	= 0
 	shmsSTOP_D1_in	= 0
-        shmsSTOP_D1_flr = 0
+	shmsSTOP_D1_flr = 0
 	shmsSTOP_D1_men = 0
 	shmsSTOP_D1_mid1 = 0
 	shmsSTOP_D1_mid2 = 0
@@ -600,6 +601,9 @@ C Calculate multiple scattering length of target
 	  th_ev = acos(cos_ev)
 	  sin_ev = sin(th_ev)
 
+C Calculate Eprime (from Richard's code)
+	  Eprime = p_spec*(1.d0 + dpp_s/100.d0)/1000.d0
+
 C Case 1 : extended cryo target:
 C Choices: 
 C 1. cryocylinder: Basic cylinder(2.65 inches diameter --> 3.37 cm radius) w/flat exit window (5 mil Al)
@@ -752,6 +756,7 @@ C for spectrometer ntuples
 	       shms_hut(21)= shmsSTOP_id
 	       shms_hut(22)= x
 	       shms_hut(23)= y
+		   shms_hut(24) = Eprime
 	       do ivar=1,NtupleSize
 		  write(NtupleIO) shms_hut(ivar)
 	       enddo
@@ -785,6 +790,7 @@ C for spectrometer ntuples
                hms_hut(21)=hSTOP_id
 	       hms_hut(22)= x
 	       hms_hut(23)= y
+		   hms_hut(24) = Eprime
 	       do ivar=1,NtupleSize
 		  write(NtupleIO) hms_hut(ivar)
 	       enddo
