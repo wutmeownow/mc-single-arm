@@ -105,6 +105,7 @@ Ntuple variables in SHMS hut ntuple ntuple id = 1411
 * stop_id information on where the track ended (0=successful reached detectors)
 * psvxi initial x position in the beam following system
 * psvyi initial y position in the beam following system
+* Eprime final energy
 
 Ntuple variables in HMS hut ntuple ntuple id = 1 
 ---------------------
