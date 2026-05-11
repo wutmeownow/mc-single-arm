@@ -18,7 +18,7 @@ MYOS := $(subst -,,$(shell uname))
 ifeq ($(MYOS),Linux)
   FFLAGSA=-
   INCLUDES=
-  FFLAGS = -O3 -fno-automatic
+  FFLAGS = -O3 -fno-automatic -fPIC # added fPIC flag so all code is position independent (PIE)
   OTHERLIBS = 
   FC  := gfortran
   F77 := gfortran

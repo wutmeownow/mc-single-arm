@@ -15,10 +15,10 @@ C-______________________________________________________________________________
 	include 'hbook.inc'
 
 c Vector (real*4) for hut ntuples - needs to match dimension of variables
-	real*8		shms_hut(23)
+	real*8		shms_hut(37)
 	real*8          shms_spec(59)
 
-	real*8          hms_hut(23)
+	real*8          hms_hut(37)
 c
 	real*8 xs_num,ys_num,xc_sieve,yc_sieve
 	real*8 xsfr_num,ysfr_num,xc_frsieve,yc_frsieve
@@ -70,6 +70,45 @@ C Event limits, topdrawer limits, physics quantities
 	integer*4 armSTOP_successes,armSTOP_trials
         real *8 beam_energy, el_energy, theta_sc!elastic calibration
         real *8 tar_mass, tar_atom_num          !elastic calibration
+        real *8 ebeam_model            !beam energy (GeV) for F1F2IN21
+        real *8 Z_tar                  !target charge for F1F2IN21
+        real *8 Eprime, Q2_model, W2_model, nu_model
+        real *8 W_model, xbj_model, theta_model
+        real *8 F1_model, F2_model
+        real *8 Mp_GeV
+
+C --- Added for 3He = 2p + n construction ---
+	real*8 F1_p, F2_p
+	real*8 F1_n, F2_n
+	real*8 Z_p, A_p
+	real*8 Z_n, A_n	
+
+C --- Added: cross section (optional) absolute rate, analogous to old script ---
+	real*8 p_accept, th_accept, ph_accept
+	real*8 mott_nb, tan2, w1_model, w2_inel_model
+	real*8 sigma_f1f2, sigma_weight, rate_f1f2
+	real*8 th2, p_spec_GeV, targ_len_m, jac_ep
+	real*8 n_areal_m2, lumi_per_C
+	real*8 beam_current_uA, target_dens_m3
+	real*8 alpha_em, gev2_to_nb, nb_to_m2
+	real*8 echarge, echarge_uC
+	
+C=======================================================================
+C New variable declarations for inclusive-model phase-space weighting
+C=======================================================================
+	double precision p0_GeV	! Central spectrometer momentum [GeV/c]
+	double precision pprime_GeV ! Event scattered momentum p' [GeV/c]
+	double precision jac_E_delta ! dE'/d(delta), delta fractional
+	double precision jac_xpy ! dOmega/(dxptar dyptar)
+	double precision ddelta_width ! Full generated width in delta
+	double precision dxptar_width ! Full generated width in xptar [rad]
+	double precision dyptar_width ! Full generated width in yptar [rad]
+	
+	parameter (alpha_em   = 7.2973525693d-3)      ! fine-structure constant
+	parameter (gev2_to_nb = 3.89379338d5) ! 1 GeV^-2 = 3.89379338e5 nb
+	parameter (nb_to_m2 = 1.0d-37) ! 1 GeV^-2 = 3.89379338e5 nb
+	parameter (echarge    = 1.602176634d-19) ! Coulomb
+	
 C Initial and reconstructed track quantities.
 	real*8 dpp_init,dth_init,dph_init,xtar_init,ytar_init,ztar_init
 	real*8 dpp_recon,dth_recon,dph_recon,ztar_recon,ytar_recon
@@ -77,6 +116,10 @@ C Initial and reconstructed track quantities.
 	real*8 fry,fr1,fr2
 	real*8 p_spec,th_spec			!spectrometer setting
 	real*8 resmult
+
+C Circular raster
+	double precision urad, uphi, rr, phi
+	real*8 ax_raster, ay_raster	
 
 C Control flags (from input file)
 	integer*4 ispec
@@ -293,6 +336,11 @@ C Strip off header
 	  gen_lim_up(i) = gen_lim(i)
 	enddo
 
+C Acceptance (constant for the run), analogous to old script
+	p_accept  = (gen_lim_up(1) - gen_lim_down(1))/100.d0     ! dp/p (fraction)
+	th_accept = (gen_lim_up(2) - gen_lim_down(2))/1000.d0    ! rad (from mrad)
+	ph_accept = (gen_lim_up(3) - gen_lim_down(3))/1000.d0    ! rad (from mrad)	
+
 	do i = 4,6
 	  read (chanin,1001) str_line
 	  write(*,*),str_line(1:last_char(str_line))
@@ -408,28 +456,95 @@ C Strip off header
 !     Read in flag for 'beam energy(MeV)' to trigger on elastic event if present
       beam_energy=-0.1  !by default do not use elastic event generator
       tar_atom_num=12.  !by default it is carbon
+      ebeam_model=-1.0d0      !default: disable F1F2IN21 unless set
+      Z_tar = 1.0d0           !default: proton
+      beam_current_uA = 0.d0  !optional (uA); if <=0, absolute rate disabled
+      target_dens_m3  = 0.d0  !optional (#/m^3); if <=0, absolute rate disabled	
+      n_areal_m2 = 0.d0
+      lumi_per_C = 0.d0
+      echarge_uC = echarge * 1.0d6 ! uC
+
+C=======================================================================
+C Initialization
+C=======================================================================
+      p0_GeV       = 0.d0
+      pprime_GeV   = 0.d0
+      jac_E_delta  = 0.d0
+      jac_xpy      = 0.d0
+      ddelta_width = 0.d0
+      dxptar_width = 0.d0
+      dyptar_width = 0.d0
+	
       read (chanin,1001,end=1000,err=1000) str_line
       write(*,*),str_line(1:last_char(str_line))
       iss = rd_real(str_line,beam_energy)
-      
+
+	
 ! Read in flag to use sieve
-	read (chanin,1001,end=1000,err=1000) str_line
-	write(*,*),str_line(1:last_char(str_line))
-	if (.not.rd_int(str_line,tmp_int)) 
+        read (chanin,1001,end=1000,err=1000) str_line
+        write(*,*),str_line(1:last_char(str_line))
+        if (.not.rd_int(str_line,tmp_int)) 
      > stop 'ERROR: use_sieve in setup file!'
-	if (tmp_int.eq.1) then
-	  if (ispec.eq.1) use_sieve=.true.
-	  if (ispec.eq.2) use_sieve=.true.
-	  if (ispec.eq.2) use_front_sieve=.false.
-	endif
+        if (tmp_int.eq.1) then
+          if (ispec.eq.1) use_sieve=.true.
+          if (ispec.eq.2) use_sieve=.true.
+          if (ispec.eq.2) use_front_sieve=.false.
+        endif
 
 !     Read in flag for 'target atomic number (Z+N)' for elastic event if present
       read (chanin,1001,end=1000,err=1000) str_line
       write(*,*),str_line(1:last_char(str_line))
       iss = rd_real(str_line,tar_atom_num)
 
+!     Read in beam energy (GeV) for F1F2IN21 model (optional, <=0 disables call)
+      read (chanin,1001,end=1000,err=1000) str_line
+      write(*,*),str_line(1:last_char(str_line))
+      iss = rd_real(str_line,ebeam_model)
 
- 1000	continue
+!     Read in target charge Z for F1F2IN21 model (optional)
+      read (chanin,1001,end=1000,err=1000) str_line
+      write(*,*),str_line(1:last_char(str_line))
+      iss = rd_real(str_line,Z_tar)
+
+
+!     Optional: beam current (uA) and target number density (#/m^3)
+!     Add TWO extra lines at end of your setup file if you want absolute rates.
+!
+!     Backward compatibility note:
+!     some setup files still carry two legacy lines after Z_tar
+!     ("Multiple scattering type" and "Enegy Loss"). If present,
+!     skip them before reading luminosity inputs.
+      read (chanin,1001,end=1000,err=1000) str_line
+      write(*,*),str_line(1:last_char(str_line))
+      if (index(str_line,'Multiple scattering type').gt.0 .or.
+     >    index(str_line,'Enegy Loss').gt.0) then
+        read (chanin,1001,end=1000,err=1000) str_line
+        write(*,*),str_line(1:last_char(str_line))
+
+        read (chanin,1001,end=1000,err=1000) str_line
+        write(*,*),str_line(1:last_char(str_line))
+      endif
+      iss = rd_real(str_line,beam_current_uA)
+
+      if (iss) then
+        read (chanin,1001,end=1000,err=1000) str_line
+        write(*,*),str_line(1:last_char(str_line))
+        iss = rd_real(str_line,target_dens_m3)
+      endif
+
+ 1000  continue
+      Mp_GeV = 0.93827208d0
+
+
+	print *, 'ebeam_model=', ebeam_model
+	print *, 'beam_energy=', beam_energy
+	print *, 'Z_tar=', Z_tar
+	print *, 'tar_atom_num=', tar_atom_num
+	print *, 'beam_current_uA=', beam_current_uA
+	print *, 'target_dens_m3=', target_dens_m3
+C	pause
+
+	
 
 C Set particle masses.
 	m2 = me2			!default to electron
@@ -466,7 +581,7 @@ C DJG - If you want to use default (fixed) seed, comment out the line below
 	   elseif(ispec.eq.2) then
 	      armSTOP_successes=shmsSTOP_successes
 	   endif
-	  if(mod(Itrial,5000).eq.0) write(*,*)'event #: ',
+	  if(mod(Itrial,200000).eq.0) write(*,*)'event #: ',
      >Itrial,'       successes: ',armSTOP_successes
 
 
@@ -506,18 +621,72 @@ C Units are cm.
 
           endif
 C DJG Assume flat raster
-	  fr1 = (grnd() - 0.5) * gen_lim(7)   !raster x
-	  fr2 = (grnd() - 0.5) * gen_lim(8)   !raster y
+c	  fr1 = (grnd() - 0.5) * gen_lim(7)   !raster x
+c	  fr2 = (grnd() - 0.5) * gen_lim(8)   !raster y
 
-	  fry = -fr2  !+y = up, but fry needs to be positive when pointing down
+c	  fry = -fr2  !+y = up, but fry needs to be positive when pointing down
 
+c	  x = x + fr1
+c	  y = y + fr2
+
+c	  x = x + xoff
+c	  y = y + yoff
+c	  z = z + zoff
+
+c=======================================================================
+c Generate raster offset as a UNIFORM FILLED DISK / ELLIPSE
+c
+c Old code:
+c   fr1 = (grnd()-0.5d0) * gen_lim(7)
+c   fr2 = (grnd()-0.5d0) * gen_lim(8)
+c
+c That produces a UNIFORM SQUARE / RECTANGLE in (x,y), not a circular
+c raster. The replacement below generates points uniformly in area inside
+c a unit disk, then scales them to the requested raster full widths.
+c
+c Input convention is preserved:
+c   gen_lim(7) = raster full width in x  (cm)
+c   gen_lim(8) = raster full width in y  (cm)
+c
+c For equal widths:
+c   radius = gen_lim(7)/2 = gen_lim(8)/2
+c   --> uniform circular raster
+c
+c For unequal widths:
+c   semi-axis x = gen_lim(7)/2
+c   semi-axis y = gen_lim(8)/2
+c   --> uniform elliptical raster
+c
+c IMPORTANT:
+c   The factor sqrt(rnd) is required for UNIFORM AREA density.
+c   Using r = rnd would overpopulate the center.
+c=======================================================================
+
+c----- Semi-axes of the raster footprint (cm)
+	  ax_raster = 0.5d0 * gen_lim(7)
+	  ay_raster = 0.5d0 * gen_lim(8)
+
+c----- Draw two independent random numbers in [0,1)
+	  urad = grnd()
+	  uphi = grnd()
+
+c----- Convert to polar coordinates for uniform area in a disk:
+c      rr  in [0,1] with p(rr) = 2*rr  --> rr = sqrt(U)
+c      phi in [0,2*pi)
+	  rr  = dsqrt(urad)
+	  phi = twopi * uphi
+
+c----- Scale unit disk point to requested raster size
+	  fr1 = ax_raster * rr * dcos(phi)
+	  fr2 = ay_raster * rr * dsin(phi)
+
+c----- Historical sign convention used elsewhere in the code
+	  fry = -fr2
+
+c----- Apply raster offsets to beam position at the target
 	  x = x + fr1
 	  y = y + fr2
-
-	  x = x + xoff
-	  y = y + yoff
-	  z = z + zoff
-
+	  
 C Pick scattering angles and DPP from independent, uniform distributions.
 C dxdz and dydz in HMS TRANSPORT coordinates.
 
@@ -599,7 +768,174 @@ C Calculate multiple scattering length of target
 	  endif
 	  th_ev = acos(cos_ev)
 	  sin_ev = sin(th_ev)
+	  
+C Inclusive structure-function model (F1F2IN21) for acceptance weighting
+      if (ebeam_model.gt.0.d0) then
+         Eprime = p_spec*(1.d0 + dpp_init/100.d0)/1000.d0
+	 if(ispec.eq.1) then	! spectrometer on right
+	    theta_model = acos((cos_ts+(dth_init/1000.d0)*sin_ts)
+     >	               /sqrt(1+(dth_init/1000.d0)**2
+     >                 +(dph_init/1000.d0)**2))*degrad	    
+	 elseif(ispec.eq.2) then ! spectrometer on left
+	    theta_model = acos((cos_ts-(dth_init/1000.d0)*sin_ts)
+     >	               /sqrt(1+(dth_init/1000.d0)**2
+     >                 +(dph_init/1000.d0)**2))*degrad	    
+	 endif	 
+         Q2_model = 4.d0*ebeam_model*Eprime
+     >	          *(sin((theta_model/degrad)/2.d0)**2)
+         nu_model = ebeam_model - Eprime
+         W2_model = Mp_GeV*Mp_GeV + 2.d0*Mp_GeV*nu_model - Q2_model
+	 
+	 if (W2_model.gt.0.d0) then
+            W_model = sqrt(W2_model)
+         else
+            W_model = -1.d0
+         endif
+         if (nu_model.gt.0.d0) then
+            xbj_model = Q2_model/(2.d0*Mp_GeV*nu_model)
+         else
+            xbj_model = -1.d0
+         endif
+	else
+	   Eprime = 0.d0
+	   Q2_model = -1.d0
+	   W2_model = -1.d0
+	   nu_model = -1.d0
+	   W_model = -1.d0
+	   xbj_model = -1.d0
+	   theta_model = -1.d0
+	   F1_model = 0.d0
+	   F2_model = 0.d0
+	endif
+	 
+	if (Q2_model.gt.0.d0 .and. W2_model.gt.0.d0 .and.
+     >    theta_model.gt.0.d0) then
 
+C        Special handling for 3He only: 3He = 2p + n
+        if (tar_atom_num.eq.3.d0 .and. Z_tar.eq.2.d0) then
+
+C           Define proton/neutron A,Z using the same type as model inputs
+        	Z_p = 1.d0
+            A_p = 1.d0
+            Z_n = 0.d0
+            A_n = 1.d0
+
+C           Free proton
+            call F1F2IN21(Z_p,A_p,Q2_model,W2_model,F1_p,F2_p)
+
+C           Free neutron
+            call F1F2IN21(Z_n,A_n,Q2_model,W2_model,F1_n,F2_n)
+
+C           3He = 2p + n
+            F1_model = 2.d0*F1_p + F1_n
+            F2_model = 2.d0*F2_p + F2_n
+
+        else
+
+C           Default behavior for all other targets
+            call F1F2IN21(Z_tar,tar_atom_num,Q2_model,W2_model,
+     >                    F1_model,F2_model)
+
+        endif
+
+      else
+
+        F1_p     = 0.d0
+        F2_p     = 0.d0
+        F1_n     = 0.d0
+        F2_n     = 0.d0
+        F1_model = 0.d0
+        F2_model = 0.d0
+
+      endif
+	 
+
+C --- Cross section and (optional) absolute rate (analogous to old block) ---
+       mott_nb      = 0.d0
+       sigma_f1f2   = 0.d0
+       sigma_weight = 0.d0
+       rate_f1f2    = 0.d0
+	
+       if (ebeam_model.gt.0.d0 .and. Q2_model.gt.0.d0 .and.
+     >     nu_model.gt.0.d0 .and. theta_model.gt.0.d0) then
+
+          if (xbj_model.gt.0.99d0) then
+             sigma_f1f2   = 0.d0
+             sigma_weight = 0.d0
+             rate_f1f2    = 0.d0
+          else
+             th2  = (theta_model/degrad)/2.d0
+             tan2 = tan(th2)**2
+
+C Mott in nb/sr (GeV^-2 converted to nb via gev2_to_nb)
+             mott_nb = ((alpha_em*cos(th2)/
+     >           (2.d0*ebeam_model*sin(th2)*sin(th2)))**2)*gev2_to_nb
+	             w1_model      = F1_model/Mp_GeV
+	             w2_inel_model = F2_model/nu_model
+	             sigma_f1f2    = mott_nb*(w2_inel_model
+     >                             + 2.d0*w1_model*tan2)
+
+C=======================================================================
+C Weight for generation in (delta, xptar, yptar)
+C
+C Assumptions:
+C   sigma_f1f2 = d^2sigma / (dOmega dE')   [nb / sr / GeV]
+C   dpp_init   = fractional delta = (p-p0)/p0
+C   xptar_init = generated xptar [rad]
+C   yptar_init = generated yptar [rad]
+C   Eprime     already defined correctly earlier
+C=======================================================================
+		     p0_GeV     = p_spec/1000.d0
+		     pprime_GeV = p0_GeV*(1.d0 + dpp_init/100.d0)
+
+C dE'/d(delta) with delta fractional
+		     jac_E_delta = (pprime_GeV/Eprime) * p0_GeV
+
+C Exact solid-angle Jacobian for target slopes
+		     jac_xpy = 1.d0 /
+     >                         ((1.d0 
+     >                         + (dth_init/1000.d0)*(dth_init/1000.d0)
+     >                         + (dph_init/1000.d0)*(dph_init/1000.d0)
+     >                         )**1.5d0)
+
+C       Use the FULL generated widths here.
+C If the generator throws from [-lim,+lim], then full width = 2*lim.
+		     ddelta_width = p_accept
+		     dxptar_width = th_accept
+		     dyptar_width = ph_accept
+
+C Per-trial cross section weight in nb
+		     sigma_weight = sigma_f1f2 *
+     >                              jac_E_delta *
+     >                              jac_xpy *
+     >                              ddelta_width *
+     >                              dxptar_width * dyptar_width /
+     >                              n_trials
+C       Optional absolute rate (Hz): requires target_dens_m3 and beam_current_uA
+             if (beam_current_uA.gt.0.d0 .and. target_dens_m3.gt.0.d0
+     >           .and. gen_lim(6).ne.0.d0) then
+C       --- after sigma_weight is computed (still in nb * phase-space) ---
+		targ_len_m = abs(gen_lim(6))/100.d0 ! cm -> m
+		n_areal_m2 = target_dens_m3 * targ_len_m ! (#/m^3)*m = #/m^2
+		lumi_per_C   = n_areal_m2 / echarge_uC ! 1/(m^2*uC)
+
+C       convert nb -> m^2 and normalize by charge contribution
+C		sigma_weight = sigma_weight * nb_to_m2 * lumi_per_C
+		sigma_weight = sigma_weight * nb_to_m2 ! do luminosity scaling in python
+		rate_f1f2 = sigma_weight * target_dens_m3 * nb_to_m2 * lumi_per_C
+     >                     * (beam_current_uA*1.d-6)
+     >                     * targ_len_m / (echarge)
+             endif
+          endif
+       endif
+
+       if ((Itrial.le.1).or.(mod(Itrial,50000).le.3)) then
+          write(*,'("trial #",i8," xsec(nb)=",G14.5," L/C=",G14.5,
+     >      " weight=",G14.5," rate(Hz)=",G14.5," at x,Q2=",2F8.4)')
+     >      Itrial, sigma_f1f2, lumi_per_C, sigma_weight, rate_f1f2,
+     >      xbj_model, Q2_model
+       endif
+	
 C Case 1 : extended cryo target:
 C Choices: 
 C 1. cryocylinder: Basic cylinder(2.65 inches diameter --> 3.37 cm radius) w/flat exit window (5 mil Al)
@@ -607,8 +943,9 @@ C 2. cryotarg2017: Cylinder (1.32 inches radisu)  with curved exit window (same 
 C 3. Tuna can: shaped like a tuna can - 4 cm diameter (usually)  - 5 mil window. 
 	  if (gen_lim(6).gt.3.) then ! anything longer than 3 cm assumed to be cryotarget
 c	    call cryotuna(z,th_ev,rad_len_cm,gen_lim(6),musc_targ_len)
-c	    call cryocylinder(z,th_ev,rad_len_cm,gen_lim(6),musc_targ_len)
-	     call cryotarg2017(z,th_ev,rad_len_cm,gen_lim(6),musc_targ_len)
+c       call cryocylinder(z,th_ev,rad_len_cm,gen_lim(6),musc_targ_len)
+             call he3targ2019(z,th_ev,rad_len_cm, 40.0, musc_targ_len)  !specify 40 cm length all the time	     
+c	     call cryotarg2017(z,th_ev,rad_len_cm,gen_lim(6),musc_targ_len)	    
 C Simple solid target
 	 else
 	    if (gen_lim(6).gt.0) then
@@ -699,8 +1036,16 @@ c            if (ok_spec) spec(58) =1.
 	  if (ok_spec) then !Success, increment arrays
 	    dpp_recon = dpp_s
             dth_recon = dydz_s*1000.			!mr
-	    dph_recon = dxdz_s*1000.			!mr
-	    ztar_recon = + y_s / sin_ts 
+	    dph_recon = dxdz_s*1000. !mr
+C       RLT: To keep RHCS consistency with HCANA, SHMS ztar must pick up minus sign	    
+	    if(ispec.eq.2) then
+	       ztar_recon = - y_s / sin_ts ! Flipped +ztar->-ztar to keep RHCS
+	    elseif(ispec.eq.1) then
+	       ztar_recon = + y_s / sin_ts ! Keep +ztar to keep RHCS (y_s->-y_s for HMS)
+	    else
+	       write(6,*) 'Unknown spectrometer! Stopping..'
+	       stop
+	    endif
             ytar_recon = y_s
 
 C Compute sums for calculating reconstruction variances.
@@ -752,7 +1097,21 @@ C for spectrometer ntuples
 	       shms_hut(21)= shmsSTOP_id
 	       shms_hut(22)= x
 	       shms_hut(23)= y
-	       do ivar=1,NtupleSize
+	       shms_hut(24)= ebeam_model
+	       shms_hut(25)= Eprime
+	       shms_hut(26)= Q2_model
+	       shms_hut(27)= W2_model
+	       shms_hut(28)= W_model
+	       shms_hut(29)= nu_model
+	       shms_hut(30)= xbj_model
+	       shms_hut(31)= theta_model
+	       shms_hut(32)= F1_model
+	       shms_hut(33)= F2_model
+ 	       shms_hut(34)= mott_nb
+ 	       shms_hut(35)= sigma_f1f2
+ 	       shms_hut(36)= sigma_weight
+ 	       shms_hut(37)= rate_f1f2
+ 	       do ivar=1,37
 		  write(NtupleIO) shms_hut(ivar)
 	       enddo
 	    endif
@@ -785,7 +1144,21 @@ C for spectrometer ntuples
                hms_hut(21)=hSTOP_id
 	       hms_hut(22)= x
 	       hms_hut(23)= y
-	       do ivar=1,NtupleSize
+	       hms_hut(24)= ebeam_model
+	       hms_hut(25)= Eprime
+	       hms_hut(26)= Q2_model
+	       hms_hut(27)= W2_model
+	       hms_hut(28)= W_model
+	       hms_hut(29)= nu_model
+	       hms_hut(30)= xbj_model
+	       hms_hut(31)= theta_model
+	       hms_hut(32)= F1_model
+	       hms_hut(33)= F2_model
+ 	       hms_hut(34)= mott_nb
+ 	       hms_hut(35)= sigma_f1f2
+ 	       hms_hut(36)= sigma_weight
+ 	       hms_hut(37)= rate_f1f2
+ 	       do ivar=1,37
 		  write(NtupleIO) hms_hut(ivar)
 	       enddo
 	    endif

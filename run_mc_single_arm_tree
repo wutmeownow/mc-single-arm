@@ -1,11 +1,15 @@
 #!/usr/bin/tcsh 
+
+module purge
+module use /cvmfs/oasis.opensciencegrid.org/jlab/scicomp/sw/el9/modulefiles
+module load root/6.30.04-gcc11.4.0
+
 cd src
-pwd
 make clean
 make
-./mc_single_arm << endofinput >! ../runout/$1.out
+./mc_single_arm <<EOF |& tee "../runout/$1.out"
 $1
-endofinput
+EOF
 cd ../util/root_tree
 make clean
 make
@@ -13,4 +17,5 @@ make
 $1
 endofinput
 cd ../..
-rm worksim/$1.bin
+rm -f worksim/$1.bin
+# mv worksim/$1.root outfiles/

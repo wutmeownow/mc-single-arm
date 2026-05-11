@@ -6,14 +6,16 @@ C
       include 'hbook.inc'
       character*80 filename,specfilename
       logical spec_ntuple
-      character*16	hut_nt_names(23)/
+      character*16      hut_nt_names(37)/
      >     'psxfp', 'psyfp', 'psxpfp', 'psypfp',
      >     'psztari','psytari', 'psdeltai', 'psyptari', 'psxptari',
-     >     'psztar','psytar', 'psdelta', 'psyptar', 'psxptar', 
+     >     'psztar','psytar', 'psdelta', 'psyptar', 'psxptar',
      >     'psxtari','fry','xsnum','ysnum','xsieve',
      >     'ysieve','stop_id',
-     >     'psvxi','psvyi' /
-
+     >     'psvxi','psvyi',
+     >     'kin_ebeam','kin_eprime','kin_q2','kin_w2','kin_w',
+     >     'kin_nu','kin_xbj','kin_theta','F1in21','F2in21',
+     >     'mott_nb','sigma_f1f2','weight','rate_hz' /
       character*16	spec_nt_names(59)/
      >     's_hb1_x', 's_hb1_y','s_hb2_x', 's_hb2_y','s_hb3_x', 
      >     's_hb3_y','s_hb4_x', 's_hb4_y', 's_q1_x', 's_q1_y', ! 10
@@ -33,9 +35,8 @@ C
 
       integer*4 i
       integer*4	last_char
-
-      NtupleIO=30
-      NtupleSize=23
+        NtupleIO=30
+        NtupleSize=37
 
       open(NtupleIO,file=filename,form="unformatted",access="sequential")  
 
