@@ -18,7 +18,7 @@ my_objs = hms_hbook_init.o shms_hbook_init.o \
 	  $(SHARE)rotate_vaxis.o $(SHARE)locforunt.o $(SHARE)musc.o \
           $(SHARE)musc_ext.o $(SHARE)stringlib.o mt19937.o gauss1.o \
 	  $(CH)lfit.o $(CH)ranlux.o $(CH)fint.o $(CH)kerset.o $(CH)abend.o \
-          loren.o F1F2IN21_v1.0.o
+          loren.o F1F2IN21_v1.0.o getsf_f1f2fit.o
 
 MYOS := $(subst -,,$(shell uname))
 #mess $(MYOS)
@@ -146,8 +146,32 @@ endif
 
 all: mc_single_arm 
 
-mc_single_arm: $(my_objs) Makefile mc_single_arm.o
+# mc_single_arm: $(my_objs) Makefile mc_single_arm.o
+# 	$(F77) -o $@ $(FFLAGS) mc_single_arm.o $(my_objs) $(OTHERLIBS)
+
+mc_single_arm: prepare_sf_tables $(my_objs) Makefile mc_single_arm.o
 	$(F77) -o $@ $(FFLAGS) mc_single_arm.o $(my_objs) $(OTHERLIBS)
+
+prepare_sf_tables:
+	@set -e; \
+	tables_dir="interp/sf_tables"; \
+	mkdir -p "$$tables_dir"; \
+	if ls "$$tables_dir"/Table_3He_F1F2_SF*.csv >/dev/null 2>&1; then \
+	  echo "3He SF CSV tables already present in $$tables_dir"; \
+	  exit 0; \
+	fi; \
+	if [ -f "interp/F1F221_3He_XZ_20250828_tables2.tar.gz" ]; then \
+	  echo "Extracting interp/F1F221_3He_XZ_20250828_tables2.tar.gz"; \
+	  tar -xzf "interp/F1F221_3He_XZ_20250828_tables2.tar.gz" -C "interp"; \
+	elif [ -f "interp/F1F221_3He_XZ_20250828_tables.tar" ]; then \
+	  echo "Extracting interp/F1F221_3He_XZ_20250828_tables.tar"; \
+	  tar -xf "interp/F1F221_3He_XZ_20250828_tables.tar" -C "interp"; \
+	elif ls interp/F1F221_3He_XZ_20250828_tables.tar.* >/dev/null 2>&1; then \
+	  echo "Extracting split tarball interp/F1F221_3He_XZ_20250828_tables.tar.*"; \
+	  cat interp/F1F221_3He_XZ_20250828_tables.tar.* | tar -xf - -C "interp"; \
+	else \
+	  echo "No 3He SF table archive found under src/interp; relying on existing CSVs."; \
+	fi
 
 clean:
 	rm -f *.o $(H)*.o $(SH)*.o $(SHARE)*.o $(CH)*.o mc_single_arm
