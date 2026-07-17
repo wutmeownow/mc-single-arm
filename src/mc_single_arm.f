@@ -35,7 +35,6 @@ C Local declarations.
      >			chanout	/2/,
      >			n_trials,trial,
      >			tmp_int
-
 	integer*4 Itrial                        ! TH - add this for gfortran: forces integer type cast
 	logical*4	iss
 
@@ -84,7 +83,7 @@ C --- Added for 3He = 2p + n construction ---
 	real*8 F1_p, F2_p
 	real*8 F1_n, F2_n
 	real*8 Z_p, A_p
-	real*8 Z_n, A_n	
+	real*8 Z_n, A_n
 
 C --- Added: cross section (optional) absolute rate, analogous to old script ---
 	real*8 p_accept, th_accept, ph_accept
@@ -122,7 +121,7 @@ C Initial and reconstructed track quantities.
 
 C Circular raster
 	double precision urad, uphi, rr, phi
-	real*8 ax_raster, ay_raster	
+	real*8 ax_raster, ay_raster
 
 C Control flags (from input file)
 	integer*4 ispec
@@ -271,7 +270,7 @@ C Open setup file.
 
 C Define HBOOK/NTUPLE filename if used.
 	if (hut_ntuple) then
-	  hbook_filename = '../worksim/'//rawname(1:last_char(rawname))//'.bin'
+	  hbook_filename = '../worksim/'//rawname(1:last_char(rawname))
 	endif
 C Open Output file.
 	filename = '../outfiles/'//rawname(1:last_char(rawname))//'.out'
@@ -456,17 +455,18 @@ C Acceptance (constant for the run), analogous to old script
      > stop 'ERROR: store_all in setup file!'
 	if (tmp_int.eq.1) store_all = .true.
 
-!     Read in flag for 'beam energy(MeV)' to trigger on elastic event if present
-      beam_energy=-0.1  !by default do not use elastic event generator
-      tar_atom_num=12.  !by default it is carbon
-      ebeam_model=-1.0d0      !default: disable F1F2IN21 unless set
-      Z_tar = 1.0d0           !default: proton
-	  sf_model_flag = 0        !default model: F1F2IN21
-      beam_current_uA = 0.d0  !optional (uA); if <=0, absolute rate disabled
-      target_dens_m3  = 0.d0  !optional (#/m^3); if <=0, absolute rate disabled	
-      n_areal_m2 = 0.d0
-      lumi_per_C = 0.d0
-      echarge_uC = echarge * 1.0d6 ! uC
+! Read in flag for 'beam energy(MeV)' to trigger on elastic event if present
+	beam_energy=-0.1  !by default do not use elastic event generator
+	tar_atom_num=12.  !by default it is carbon
+	ebeam_model=-1.0d0      !default: disable F1F2IN21 unless set
+	Z_tar = 1.0d0           !default: proton
+	sf_model_flag = 0        !default model: F1F2IN21
+	sf_fit_imod = 1			!default 3He fit variant
+	beam_current_uA = 0.d0  !optional (uA); if <=0, absolute rate disabled
+	target_dens_m3  = 0.d0  !optional (#/m^3); if <=0, absolute rate disabled	
+	n_areal_m2 = 0.d0
+	lumi_per_C = 0.d0
+	echarge_uC = echarge * 1.0d6 ! uC
 
 C=======================================================================
 C Initialization
@@ -559,9 +559,9 @@ C=======================================================================
 
 !	Open HBOOK/NTUPLE file here
 	if(hut_ntuple) then
+C   change below if you want different file extension if using XZ 3He fit
 		if (sf_model_flag.eq.1) then
-		      hbook_filename = hbook_filename(1:last_char(hbook_filename))//
-     >                     '3HeFit.bin'
+		      hbook_filename = hbook_filename(1:last_char(hbook_filename))// '.bin'
 		else
 			hbook_filename = hbook_filename(1:last_char(hbook_filename))//'.bin'
 		endif
@@ -628,7 +628,7 @@ C Units are cm.
 	  y = gauss1(th_nsig_max) * gen_lim(5) / 6.0	!beam height
 
           if(gen_lim(6).gt.0) then                      
-	     z = (grnd() - 0.5) * gen_lim(6)		!along target
+	     z = (grnd() - 0.5) * gen_lim(6) + zoff		!along target with offset
 
           elseif(gen_lim(6).eq.-3) then                 !optics1: three foils
              foil_nm=3*grnd()-1.5                       !20um foils;  z=0, +/- 10cm
