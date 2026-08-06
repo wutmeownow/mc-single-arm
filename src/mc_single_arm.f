@@ -822,16 +822,11 @@ C Inclusive structure-function model (F1F2IN21) for acceptance weighting
       if (ebeam_model.gt.0.d0) then
          Eprime = p_spec*(1.d0 + dpp_init/100.d0)/1000.d0
 	 if(ispec.eq.1) then	! spectrometer on right
-	    theta_model = acos((cos_ts+(dth_init/1000.d0)*sin_ts)
-     >	               /sqrt(1+(dth_init/1000.d0)**2
-     >                 +(dph_init/1000.d0)**2))*degrad	    
+	    theta_model = acos((cos_ts+(dth_init/1000.d0)*sin_ts)/sqrt(1+(dth_init/1000.d0)**2+(dph_init/1000.d0)**2))*degrad
 	 elseif(ispec.eq.2) then ! spectrometer on left
-	    theta_model = acos((cos_ts-(dth_init/1000.d0)*sin_ts)
-     >	               /sqrt(1+(dth_init/1000.d0)**2
-     >                 +(dph_init/1000.d0)**2))*degrad	    
-	 endif	 
-         Q2_model = 4.d0*ebeam_model*Eprime
-     >	          *(sin((theta_model/degrad)/2.d0)**2)
+	    theta_model = acos((cos_ts-(dth_init/1000.d0)*sin_ts)/sqrt(1+(dth_init/1000.d0)**2+(dph_init/1000.d0)**2))*degrad
+	 endif
+         Q2_model = 4.d0*ebeam_model*Eprime*(sin((theta_model/degrad)/2.d0)**2)
          nu_model = ebeam_model - Eprime
          W2_model = Mp_GeV*Mp_GeV + 2.d0*Mp_GeV*nu_model - Q2_model
 	 
@@ -857,16 +852,13 @@ C Inclusive structure-function model (F1F2IN21) for acceptance weighting
 	   F2_model = 0.d0
 	endif
 	 
-	if (Q2_model.gt.0.d0 .and. W2_model.gt.0.d0 .and.
-     >    theta_model.gt.0.d0) then
+	if (Q2_model.gt.0.d0 .and. W2_model.gt.0.d0 .and. theta_model.gt.0.d0) then
 
 C        The SF model flag only selects F1_model/F2_model here.
 C        Both branches use the common cross-section and weight code below.	 
 C        Optional 3He structure-function fit table
-         if (sf_model_flag.eq.1 .and. tar_atom_num.eq.3.d0
-     >       .and. Z_tar.eq.2.d0) then
-            call GETSF_F1F2fit(4,sf_fit_imod,xbj_model,Q2_model,
-     >                         F1_model,F2_model,FL_model,SF_STAT)
+        if (sf_model_flag.eq.1 .and. tar_atom_num.eq.3.d0 .and. Z_tar.eq.2.d0) then
+            call GETSF_F1F2fit(4,sf_fit_imod,xbj_model,Q2_model,F1_model,F2_model,FL_model,SF_STAT)
             if (Itrial.eq.1 .and. SF_STAT) then
                write(6,*) 'SF model=1 uses GETSF_F1F2fit from'
                write(6,*) 'interp/sf_tables/Table_3He_F1F2_SF*.csv'
